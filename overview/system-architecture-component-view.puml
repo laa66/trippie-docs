@@ -1,0 +1,69 @@
+@startuml trippie-architecture
+skinparam componentStyle rectangle
+
+package "Frontend (Vue + Quasar + TS)" {
+    [Mapa UI]
+    [POI Viewer]
+    [Audio Player]
+    [Login/Register UI]
+    [API Client]
+}
+
+package "Backend (Go - Microservices)" {
+    [API Gateway / Router]
+    [POI Service]
+    [Text Generation Service]
+    [TTS Service]
+    [Identity Service]
+    [Event Bus / Broker]
+    [Cache (Redis)]
+    [Database (PostgreSQL)]
+    [File Storage (Audio)]
+}
+
+package "External APIs" {
+    [Mapbox API]
+    [OpenAI API]
+    [Google Cloud TTS]
+}
+
+' FRONTEND do BACKEND
+[Mapa UI] --> [API Client]
+[POI Viewer] --> [API Client]
+[Audio Player] --> [API Client]
+[Login/Register UI] --> [API Client]
+[API Client] --> [API Gateway / Router]
+
+' GATEWAY routing
+[API Gateway / Router] --> [POI Service]
+[API Gateway / Router] --> [Text Generation Service]
+[API Gateway / Router] --> [TTS Service]
+[API Gateway / Router] --> [Identity Service]
+
+' POI SERVICE
+[POI Service] --> [Database (PostgreSQL)]
+[POI Service] --> [Cache (Redis)]
+[POI Service] --> [Mapbox API]
+[POI Service] --> [Event Bus / Broker] : emit: POI.Created
+
+' TEXT GENERATION
+[Event Bus / Broker] --> [Text Generation Service] : on: POI.Created
+[Text Generation Service] --> [OpenAI API]
+[Text Generation Service] --> [Cache (Redis)]
+[Text Generation Service] --> [Event Bus / Broker] : emit: Description.Generated
+
+' TTS SERVICE
+[Event Bus / Broker] --> [TTS Service] : on: Description.Generated
+[TTS Service] --> [Google Cloud TTS]
+[TTS Service] --> [Cache (Redis)]
+[TTS Service] --> [File Storage (Audio)]
+[TTS Service] --> [Event Bus / Broker] : emit: Audio.Generated
+
+' IDENTITY
+[Identity Service] --> [Database (PostgreSQL)]
+[Identity Service] --> [Cache (Redis)]
+
+' FILE DELIVERY
+[File Storage (Audio)] --> [Audio Player]
+
+@enduml
